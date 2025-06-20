@@ -134,6 +134,20 @@ def simulate_habr_visit_and_scroll():
         pyautogui.scroll(-300)
         time.sleep(random.uniform(1.0, 3.0))
 
+def simulate_outlook_or_teams():
+    for title in ["Outlook", "Teams"]:
+        for w in gw.getWindowsWithTitle(title):
+            try:
+                w.activate()
+                time.sleep(2)
+                move_mouse_in_window(w)
+                for _ in range(random.randint(2, 6)):
+                    pyautogui.press(random.choice(['up', 'down']))
+                    time.sleep(random.uniform(0.3, 0.7))
+                log_action(f"Имитация просмотра {title}")
+            except:
+                continue
+
 def simulate_unknown_window_behavior(win):
     action = random.choice(['mouse', 'scroll', 'switch'])
     if action == 'mouse':
@@ -161,8 +175,11 @@ def simulate_behavior():
         return
 
     proc = get_active_process_name()
-    actions = config["apps"].get(proc, {}).get("actions", [])
+    if proc in ["outlook.exe", "teams.exe"]:
+        simulate_outlook_or_teams()
+        return
 
+    actions = config["apps"].get(proc, {}).get("actions", [])
     if not actions:
         simulate_unknown_window_behavior(win)
         return

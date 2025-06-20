@@ -18,11 +18,11 @@
     },
     "outlook.exe": {
       "type": "mail",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move", "outlook_teams_specific"]
     },
     "teams.exe": {
       "type": "chat",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move", "outlook_teams_specific"]
     },
     "powershell_ise.exe": {
       "type": "terminal",
