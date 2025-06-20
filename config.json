@@ -45,5 +45,5 @@
     "start": "09:00",
     "end": "19:00"
   },
-  "enable_work_hours": "enable"
+  "enable_work_hours": "disable"
 }

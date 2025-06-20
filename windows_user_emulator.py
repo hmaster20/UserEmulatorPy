@@ -9,12 +9,14 @@ import sys
 import logging
 import json
 from datetime import datetime
+import webbrowser
 
 # === Настройки ===
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.5
 SAFE_AREA = (100, 100)  # Не перемещаем мышь в (0, 0) — это сигнал аварийной остановки
 PAUSE_FACTOR = 0.8      # Уменьшение задержек на 20%
+MOUSE_SPEED_FACTOR = 2.0
 
 # === Логирование UTF-8 ===
 logger = logging.getLogger()
@@ -63,7 +65,6 @@ def is_self_window(win):
 def get_usable_windows():
     all_windows = gw.getAllWindows()
     usable = []
-
     for win in all_windows:
         title = win.title.strip()
         if not title:
@@ -79,7 +80,7 @@ def move_mouse_safely():
     screen_width, screen_height = pyautogui.size()
     x = random.randint(SAFE_AREA[0], screen_width - 100)
     y = random.randint(SAFE_AREA[1], screen_height - 100)
-    pyautogui.moveTo(x, y, duration=random.uniform(0.4, 0.9))
+    pyautogui.moveTo(x, y, duration=random.uniform(0.8, 1.8) * MOUSE_SPEED_FACTOR)
 
 def move_mouse_in_window(win):
     if not win:
@@ -89,7 +90,7 @@ def move_mouse_in_window(win):
         for _ in range(random.randint(1, 2)):
             x = random.randint(left + 50, left + width - 50)
             y = random.randint(top + 50, top + height - 50)
-            pyautogui.moveTo(x, y, duration=random.uniform(0.4, 1.0))
+            pyautogui.moveTo(x, y, duration=random.uniform(1.0, 2.5) * MOUSE_SPEED_FACTOR)
     except:
         pass
 
@@ -100,13 +101,39 @@ def scroll_like_reading():
 
 def switch_window_many():
     count = random.randint(2, 10)
+    pyautogui.keyDown('alt')
     for _ in range(count):
-        pyautogui.keyDown('alt')
         pyautogui.press('tab')
-        pyautogui.keyUp('alt')
-        time.sleep(0.1)
+        time.sleep(random.uniform(0.1, 0.3))
+    pyautogui.keyUp('alt')
+    time.sleep(random.uniform(1.1, 2.8))
 
- # Поведение для неизвестных окон
+def click_taskbar_random():
+    screen_width, screen_height = pyautogui.size()
+    y = screen_height - random.randint(5, 40)
+    x = random.randint(100, screen_width - 100)
+    pyautogui.moveTo(x, y, duration=random.uniform(1.0, 2.5) * MOUSE_SPEED_FACTOR)
+    pyautogui.click()
+    log_action("Клик по панели задач")
+
+def simulate_browser_tab_switch():
+    direction = random.choice(["next", "prev"])
+    if direction == "next":
+        pyautogui.hotkey('ctrl', 'tab')
+        log_action("Переключение на следующую вкладку")
+    else:
+        pyautogui.hotkey('ctrl', 'shift', 'tab')
+        log_action("Переключение на предыдущую вкладку")
+    time.sleep(random.uniform(1.0, 2.5))
+
+def simulate_habr_visit_and_scroll():
+    log_action("Открытие Habr и прокрутка")
+    webbrowser.open("https://habr.com/")
+    time.sleep(5)
+    for _ in range(random.randint(5, 10)):
+        pyautogui.scroll(-300)
+        time.sleep(random.uniform(1.0, 3.0))
+
 def simulate_unknown_window_behavior(win):
     action = random.choice(['mouse', 'scroll', 'switch'])
     if action == 'mouse':
@@ -116,8 +143,10 @@ def simulate_unknown_window_behavior(win):
         log_action("Прокрутка (unknown)")
         scroll_like_reading()
     elif action == 'switch':
-        log_action("Переключение окна (unknown)")
-        switch_window_many()
+        if random.random() < 0.5:
+            switch_window_many()
+        else:
+            click_taskbar_random()
 
 def simulate_behavior():
     windows = get_usable_windows()
@@ -152,6 +181,9 @@ def simulate_behavior():
 def main():
     print("Эмулятор запущен. Нажмите Scroll Lock для остановки.")
     last_thought_pause = time.time()
+    last_switch_time = time.time()
+    last_tab_switch = time.time()
+    last_habr = time.time()
 
     try:
         while True:
@@ -170,6 +202,21 @@ def main():
                 log_action(f"Размышление: пауза {int(pause_time)} сек.")
                 time.sleep(pause_time)
                 last_thought_pause = time.time()
+
+            if time.time() - last_switch_time > random.uniform(20, 240):
+                if random.random() < 0.6:
+                    switch_window_many()
+                else:
+                    click_taskbar_random()
+                last_switch_time = time.time()
+
+            if time.time() - last_tab_switch > random.uniform(60, 180):
+                simulate_browser_tab_switch()
+                last_tab_switch = time.time()
+
+            if time.time() - last_habr > random.uniform(300, 900):
+                simulate_habr_visit_and_scroll()
+                last_habr = time.time()
 
             simulate_behavior()
             time.sleep(random.uniform(1, 6))
