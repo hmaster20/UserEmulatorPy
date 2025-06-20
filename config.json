@@ -1,0 +1,78 @@
+{
+  "apps": {
+    "chrome.exe": {
+      "type": "browser",
+      "actions": [
+        "scroll",
+        "select_text",
+        "mouse_move"
+      ]
+    },
+    "code.exe": {
+      "type": "editor",
+      "actions": [
+        "scroll",
+        "mouse_move"
+      ]
+    },
+    "notepad++.exe": {
+      "type": "editor",
+      "actions": [
+        "scroll",
+        "mouse_move"
+      ]
+    },
+    "explorer.exe": {
+      "type": "explorer",
+      "actions": [
+        "mouse_move"
+      ]
+    },
+    "outlook.exe": {
+      "type": "mail",
+      "actions": [
+        "scroll",
+        "mouse_move"
+      ]
+    },
+    "teams.exe": {
+      "type": "chat",
+      "actions": [
+        "scroll",
+        "mouse_move"
+      ]
+    },
+    "powershell_ise.exe": {
+      "type": "terminal",
+      "actions": [
+        "scroll",
+        "mouse_move"
+      ]
+    },
+    "winword.exe": {
+      "type": "editor",
+      "actions": [
+        "scroll",
+        "mouse_move"
+      ]
+    },
+    "excel.exe": {
+      "type": "spreadsheet",
+      "actions": [
+        "scroll",
+        "mouse_move"
+      ]
+    },
+    "mremote.exe": {
+      "type": "viewer",
+      "actions": [
+        "mouse_idle"
+      ]
+    }
+  },
+  "work_hours": {
+    "start": "09:00",
+    "end": "19:00"
+  },
+  "pause_factor": 0.8
+}
