@@ -4,7 +4,8 @@ import psutil
 import keyboard
 import random
 import time
-import subprocess
+import os
+import sys
 import logging
 import json
 from datetime import datetime
@@ -15,7 +16,7 @@ pyautogui.PAUSE = 0.5
 SAFE_AREA = (100, 100)  # Не перемещаем мышь в (0, 0) — это сигнал аварийной остановки
 PAUSE_FACTOR = 0.8      # Уменьшение задержек на 20%
 
-# === Логирование с UTF-8 ===
+# === Логирование UTF-8 ===
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 handler = logging.FileHandler("activity_log.txt", encoding="utf-8")
@@ -52,6 +53,28 @@ def get_active_process_name():
         pass
     return "unknown"
 
+def is_self_window(win):
+    try:
+        current_pid = os.getpid()
+        return win and win._getWindowPid() == current_pid
+    except:
+        return False
+
+def get_usable_windows():
+    all_windows = gw.getAllWindows()
+    usable = []
+
+    for win in all_windows:
+        title = win.title.strip()
+        if not title:
+            logger.info("Пропущено окно без заголовка.")
+            continue
+        if is_self_window(win):
+            logger.info("Пропущено окно, в котором запущен скрипт.")
+            continue
+        usable.append(win)
+    return usable
+
 def move_mouse_safely():
     screen_width, screen_height = pyautogui.size()
     x = random.randint(SAFE_AREA[0], screen_width - 100)
@@ -61,41 +84,58 @@ def move_mouse_safely():
 def move_mouse_in_window(win):
     if not win:
         return
-    left, top, width, height = win.left, win.top, win.width, win.height
-    for _ in range(random.randint(1, 2)):
-        x = random.randint(left + 50, left + width - 50)
-        y = random.randint(top + 50, top + height - 50)
-        pyautogui.moveTo(x, y, duration=random.uniform(0.4, 1.0))
+    try:
+        left, top, width, height = win.left, win.top, win.width, win.height
+        for _ in range(random.randint(1, 2)):
+            x = random.randint(left + 50, left + width - 50)
+            y = random.randint(top + 50, top + height - 50)
+            pyautogui.moveTo(x, y, duration=random.uniform(0.4, 1.0))
+    except:
+        pass
 
 def scroll_like_reading():
     direction = random.choice([-1, 1])
     pyautogui.scroll(direction * random.randint(100, 300))
     time.sleep(random.uniform(1.5, 3.0) * PAUSE_FACTOR)
 
-def switch_window():
-    pyautogui.hotkey('alt', 'tab')
-    time.sleep(random.uniform(0.5, 1.5) * PAUSE_FACTOR)
+def switch_window_many():
+    count = random.randint(2, 10)
+    for _ in range(count):
+        pyautogui.keyDown('alt')
+        pyautogui.press('tab')
+        pyautogui.keyUp('alt')
+        time.sleep(0.1)
 
-def simulate_unknown_window_behavior():
-    # Поведение для неизвестных окон
+ # Поведение для неизвестных окон
+def simulate_unknown_window_behavior(win):
     action = random.choice(['mouse', 'scroll', 'switch'])
     if action == 'mouse':
         log_action("Движение мыши (unknown)")
-        move_mouse_safely()
+        move_mouse_in_window(win)
     elif action == 'scroll':
         log_action("Прокрутка (unknown)")
         scroll_like_reading()
     elif action == 'switch':
         log_action("Переключение окна (unknown)")
-        switch_window()
+        switch_window_many()
 
 def simulate_behavior():
+    windows = get_usable_windows()
+    if not windows:
+        log_action("Нет подходящих окон для взаимодействия.")
+        return
+    win = random.choice(windows)
+    try:
+        win.activate()
+        time.sleep(1.5)
+    except:
+        return
+
     proc = get_active_process_name()
-    win = gw.getActiveWindow()
     actions = config["apps"].get(proc, {}).get("actions", [])
 
     if not actions:
-        simulate_unknown_window_behavior()
+        simulate_unknown_window_behavior(win)
         return
 
     for action in actions:
@@ -109,62 +149,36 @@ def simulate_behavior():
             log_action(f"{proc}: mouse_idle")
             move_mouse_safely()
 
-def simulate_mail_check():
-    log_action("Проверка почты в Outlook")
-    for w in gw.getWindowsWithTitle("Outlook"):
-        if "outlook" in w.title.lower():
-            w.activate()
-            time.sleep(1.5 * PAUSE_FACTOR)
-            move_mouse_in_window(w)
-            for _ in range(random.randint(2, 4)):
-                pyautogui.press('down')
-                time.sleep(random.uniform(0.5, 1.0) * PAUSE_FACTOR)
-            break
-
-    log_action("Проверка ссылки в Chrome")
-    for w in gw.getWindowsWithTitle("Chrome"):
-        if "chrome" in w.title.lower():
-            w.activate()
-            time.sleep(1.5 * PAUSE_FACTOR)
-            move_mouse_in_window(w)
-            scroll_like_reading()
-            break
-
 def main():
-    print("Эмулятор запущен. Ctrl+Alt+F12 — остановка.")
-    last_mail_check = time.time()
+    print("Эмулятор запущен. Нажмите Scroll Lock для остановки.")
     last_thought_pause = time.time()
 
     try:
         while True:
-            if keyboard.is_pressed("ctrl+alt+f12"):
-                print("Остановка пользователем")
-                log_action("Остановка по Ctrl+Alt+F12")
+            if keyboard.is_pressed("scroll lock"):
+                print("Остановка пользователем (Scroll Lock)")
+                log_action("Остановка по Scroll Lock")
                 break
 
             if not is_within_work_hours():
-                log_action("Ожидание рабочего времени")
+                log_action("Вне времени работы. Ожидание...")
                 time.sleep(60)
                 continue
 
-            if time.time() - last_mail_check > 300:
-                simulate_mail_check()
-                last_mail_check = time.time()
-
-            if time.time() - last_thought_pause > random.randint(120, 300):
+            if time.time() - last_thought_pause > random.randint(90, 180):
                 pause_time = random.uniform(20, 75)
-                log_action(f"Размышление ({int(pause_time)} сек)")
+                log_action(f"Размышление: пауза {int(pause_time)} сек.")
                 time.sleep(pause_time)
                 last_thought_pause = time.time()
 
             simulate_behavior()
-            time.sleep(random.uniform(1, 7))
+            time.sleep(random.uniform(1, 6))
 
     except KeyboardInterrupt:
         print("Остановлено вручную.")
         log_action("Остановка по KeyboardInterrupt")
     except pyautogui.FailSafeException:
-        print("Fail-safe активация (мышь в угол)")
+        print("Fail-safe активация")
         log_action("Остановка через FailSafe")
 
 if __name__ == "__main__":
