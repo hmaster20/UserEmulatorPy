@@ -9,89 +9,131 @@ import logging
 import json
 from datetime import datetime
 
-# === Настройки и логика ===
+# === Настройки ===
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.5
-PAUSE_FACTOR = 0.8  # Уменьшение задержек на 20%
+SAFE_AREA = (100, 100)  # Не перемещаем мышь в (0, 0) — это сигнал аварийной остановки
+PAUSE_FACTOR = 0.8      # Уменьшение задержек на 20%
 
 # === Логирование ===
-logging.basicConfig(
-    filename="activity_log.txt",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+# logging.basicConfig(
+#     filename="activity_log.txt",
+#     level=logging.INFO,
+#     format="%(asctime)s [%(levelname)s] %(message)s",
+# )
+
+# def log_action(action):
+#     logging.info(f"Действие: {action}")
+
+# === Логирование с UTF-8 ===
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler("activity_log.txt", encoding="utf-8")
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 def log_action(action):
-    logging.info(f"Действие: {action}")
+    logger.info(f"Действие: {action}")
 
-# === Загрузка конфигурации из файла ===
+
+
+# === Загрузка конфигурации ===
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 
-# === Проверка рабочего времени ===
+# === Проверка времени работы, опционально ===
 def is_within_work_hours():
+    mode = config.get("enable_work_hours", "enable").lower()
+    if mode != "enable":
+        return True
     now = datetime.now().time()
     start = datetime.strptime(config["work_hours"]["start"], "%H:%M").time()
     end = datetime.strptime(config["work_hours"]["end"], "%H:%M").time()
     return start <= now <= end
 
-# === Получение текущего активного окна и процесса ===
-def get_active_window_title():
+def get_active_process_name():
     try:
         win = gw.getActiveWindow()
-        return win.title.lower() if win else ''
-    except:
-        return ''
-
-def get_active_process_name():
-    win = gw.getActiveWindow()
-    if not win:
-        return ""
-    try:
-        pid = win._getWindowPid()
-        for proc in psutil.process_iter(['pid', 'name']):
-            if proc.pid == pid:
-                return proc.name().lower()
+        pid = win._getWindowPid() if win else None
+        if pid:
+            for proc in psutil.process_iter(['pid', 'name']):
+                if proc.pid == pid:
+                    return proc.name().lower()
     except Exception:
-        return ""
-    return ""
+        pass
+    return "unknown"
 
-# === Перемещение мыши внутри окна ===
+def move_mouse_safely():
+    screen_width, screen_height = pyautogui.size()
+    x = random.randint(SAFE_AREA[0], screen_width - 100)
+    y = random.randint(SAFE_AREA[1], screen_height - 100)
+    pyautogui.moveTo(x, y, duration=random.uniform(0.4, 0.9))
+
 def move_mouse_in_window(win):
     if not win:
         return
-    log_action("Перемещение мыши внутри окна")
     left, top, width, height = win.left, win.top, win.width, win.height
-    for _ in range(random.randint(1, 3)):
+    for _ in range(random.randint(1, 2)):
         x = random.randint(left + 50, left + width - 50)
         y = random.randint(top + 50, top + height - 50)
-        pyautogui.moveTo(x, y, duration=random.uniform(0.5, 1.2))
-        time.sleep(random.uniform(0.5, 1.5) * PAUSE_FACTOR)
+        pyautogui.moveTo(x, y, duration=random.uniform(0.4, 1.0))
 
-# === Прокрутка как при чтении ===
 def scroll_like_reading():
-    log_action("Прокрутка")
-    for _ in range(random.randint(1, 3)):
-        pyautogui.scroll(-random.randint(100, 300))
-        time.sleep(random.uniform(1.5, 3.5) * PAUSE_FACTOR)
+    direction = random.choice([-1, 1])
+    pyautogui.scroll(direction * random.randint(100, 300))
+    time.sleep(random.uniform(1.5, 3.0) * PAUSE_FACTOR)
 
-# === Симуляция чтения почты и перехода в браузер (Идея 2) ===
+def switch_window():
+    pyautogui.hotkey('alt', 'tab')
+    time.sleep(random.uniform(0.5, 1.5) * PAUSE_FACTOR)
+
+def simulate_unknown_window_behavior():
+    # Поведение для неизвестных окон
+    action = random.choice(['mouse', 'scroll', 'switch'])
+    if action == 'mouse':
+        log_action("Движение мыши (unknown)")
+        move_mouse_safely()
+    elif action == 'scroll':
+        log_action("Прокрутка (unknown)")
+        scroll_like_reading()
+    elif action == 'switch':
+        log_action("Переключение окна (unknown)")
+        switch_window()
+
+def simulate_behavior():
+    proc = get_active_process_name()
+    win = gw.getActiveWindow()
+    actions = config["apps"].get(proc, {}).get("actions", [])
+
+    if not actions:
+        simulate_unknown_window_behavior()
+        return
+
+    for action in actions:
+        if action == "scroll":
+            log_action(f"{proc}: scroll")
+            scroll_like_reading()
+        elif action == "mouse_move":
+            log_action(f"{proc}: mouse_move")
+            move_mouse_in_window(win)
+        elif action == "mouse_idle":
+            log_action(f"{proc}: mouse_idle")
+            move_mouse_safely()
+
 def simulate_mail_check():
-    """Имитация чтения почты и проверки ссылки (Outlook + Chrome)"""
-    log_action("Имитируем чтение почты в Outlook")
+    log_action("Проверка почты в Outlook")
     for w in gw.getWindowsWithTitle("Outlook"):
         if "outlook" in w.title.lower():
             w.activate()
-            time.sleep(2 * PAUSE_FACTOR)
+            time.sleep(1.5 * PAUSE_FACTOR)
             move_mouse_in_window(w)
-
-            # Имитируем движение по списку писем
             for _ in range(random.randint(2, 4)):
                 pyautogui.press('down')
-                time.sleep(random.uniform(0.6, 1.2) * PAUSE_FACTOR)
+                time.sleep(random.uniform(0.5, 1.0) * PAUSE_FACTOR)
             break
 
-    log_action("Переход в Chrome (проверка ссылки)")
+    log_action("Проверка ссылки в Chrome")
     for w in gw.getWindowsWithTitle("Chrome"):
         if "chrome" in w.title.lower():
             w.activate()
@@ -100,51 +142,42 @@ def simulate_mail_check():
             scroll_like_reading()
             break
 
-# === Симуляция поведения по текущему окну ===
-def simulate_behavior():
-    title = get_active_window_title()
-    proc = get_active_process_name()
-    win = gw.getActiveWindow()
-
-    behavior = config["apps"].get(proc, {})
-    actions = behavior.get("actions", [])
-    for action in actions:
-        if action == "scroll":
-            scroll_like_reading()
-        elif action == "mouse_move":
-            move_mouse_in_window(win)
-
-# === Основной цикл ===
 def main():
-    print("Эмулятор запущен. Ctrl+Alt+F12 для остановки.")
+    print("Эмулятор запущен. Ctrl+Alt+F12 — остановка.")
     last_mail_check = time.time()
+    last_thought_pause = time.time()
 
     try:
         while True:
             if keyboard.is_pressed("ctrl+alt+f12"):
-                print("Остановка по Ctrl+Alt+F12")
-                log_action("Остановка пользователем")
+                print("Остановка пользователем")
+                log_action("Остановка по Ctrl+Alt+F12")
                 break
 
             if not is_within_work_hours():
-                log_action("Вне рабочего времени — ожидание")
+                log_action("Ожидание рабочего времени")
                 time.sleep(60)
                 continue
 
-            # Каждые ~5 минут делаем проверку Outlook + Chrome
             if time.time() - last_mail_check > 300:
                 simulate_mail_check()
                 last_mail_check = time.time()
 
-            # Основное поведение в текущем окне
-            simulate_behavior()
+            if time.time() - last_thought_pause > random.randint(120, 300):
+                pause_time = random.uniform(20, 75)
+                log_action(f"Размышление ({int(pause_time)} сек)")
+                time.sleep(pause_time)
+                last_thought_pause = time.time()
 
-            # Пауза между действиями
-            time.sleep(random.uniform(5, 10) * PAUSE_FACTOR)
+            simulate_behavior()
+            time.sleep(random.uniform(1, 7))
 
     except KeyboardInterrupt:
         print("Остановлено вручную.")
-        log_action("Остановка вручную")
+        log_action("Остановка по KeyboardInterrupt")
+    except pyautogui.FailSafeException:
+        print("Fail-safe активация (мышь в угол)")
+        log_action("Остановка через FailSafe")
 
 if __name__ == "__main__":
     main()
