@@ -15,16 +15,6 @@ pyautogui.PAUSE = 0.5
 SAFE_AREA = (100, 100)  # Не перемещаем мышь в (0, 0) — это сигнал аварийной остановки
 PAUSE_FACTOR = 0.8      # Уменьшение задержек на 20%
 
-# === Логирование ===
-# logging.basicConfig(
-#     filename="activity_log.txt",
-#     level=logging.INFO,
-#     format="%(asctime)s [%(levelname)s] %(message)s",
-# )
-
-# def log_action(action):
-#     logging.info(f"Действие: {action}")
-
 # === Логирование с UTF-8 ===
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -35,8 +25,6 @@ logger.addHandler(handler)
 
 def log_action(action):
     logger.info(f"Действие: {action}")
-
-
 
 # === Загрузка конфигурации ===
 with open("config.json", "r", encoding="utf-8") as f:
