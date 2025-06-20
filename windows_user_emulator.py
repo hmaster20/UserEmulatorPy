@@ -26,6 +26,22 @@ formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+# === Статистика окон ===
+window_stats = {}
+STATS_FILE = "window_stats.json"
+
+def load_window_stats():
+    global window_stats
+    try:
+        with open(STATS_FILE, "r", encoding="utf-8") as f:
+            window_stats = json.load(f)
+    except FileNotFoundError:
+        window_stats = {}
+
+def save_window_stats():
+    with open(STATS_FILE, "w", encoding="utf-8") as f:
+        json.dump(window_stats, f, ensure_ascii=False, indent=2)
+
 def log_action(action):
     logger.info(f"Действие: {action}")
 
@@ -65,10 +81,19 @@ def is_self_window(win):
 def get_usable_windows():
     all_windows = gw.getAllWindows()
     usable = []
+    logged_no_title = False
     for win in all_windows:
         title = win.title.strip()
         if not title:
-            logger.info("Пропущено окно без заголовка.")
+            if not logged_no_title:
+                try:
+                    pid = win._getWindowPid()
+                    proc_name = next((proc.name().lower() for proc in psutil.process_iter(['pid', 'name']) if proc.pid == pid), "unknown")
+                    logger.info(f"Пропущено окно без заголовка, процесс: {proc_name}, hwnd: {win._hWnd}")
+                    logged_no_title = True
+                except:
+                    logger.info("Пропущено окно без заголовка, информация о процессе недоступна")
+                    logged_no_title = True
             continue
         if is_self_window(win):
             logger.info("Пропущено окно, в котором запущен скрипт.")
@@ -148,6 +173,53 @@ def simulate_outlook_or_teams():
             except:
                 continue
 
+def simulate_explorer_behavior(win):
+    action_count = random.randint(1, 5)
+    log_action(f"Имитация работы в Проводнике, действий: {action_count}")
+    for i in range(action_count):
+        try:
+            # Одиночный клик в окне
+            move_mouse_in_window(win)
+            pyautogui.click()
+            log_action(f"Проводник: клик #{i+1}")
+            time.sleep(random.uniform(2, 4))
+
+            # Случайное действие: проверка или навигация
+            if random.random() < 0.5:
+                # Проверка: клик в другую область
+                move_mouse_in_window(win)
+                pyautogui.click()
+                log_action("Проводник: клик в другую область для проверки")
+            else:
+                # Попытка зайти в папку или выйти назад
+                if random.random() < 0.7:
+                    pyautogui.doubleClick()
+                    log_action("Проводник: попытка зайти в папку (двойной клик)")
+                    time.sleep(random.uniform(3, 6))
+                    if random.random() < 0.5:
+                        pyautogui.doubleClick()
+                        log_action("Проводник: повторный двойной клик (проверка папки)")
+                    else:
+                        pyautogui.hotkey('alt', 'up')
+                        log_action("Проводник: возврат на уровень выше")
+                else:
+                    pyautogui.hotkey('alt', 'up')
+                    log_action("Проводник: возврат на уровень выше")
+            time.sleep(random.uniform(1, 4))
+        except:
+            log_action("Проводник: ошибка при выполнении действия")
+            continue
+    # Переход к другому окну
+    switch_window_many()
+
+def update_window_stats(proc, title):
+    key = f"{proc}:{title}"
+    if key not in window_stats:
+        window_stats[key] = {"process": proc, "title": title, "interactions": 0, "last_accessed": time.time()}
+    window_stats[key]["interactions"] += 1
+    window_stats[key]["last_accessed"] = time.time()
+    save_window_stats()
+
 def simulate_unknown_window_behavior(win):
     action = random.choice(['mouse', 'scroll', 'switch'])
     if action == 'mouse':
@@ -167,7 +239,9 @@ def simulate_behavior():
     if not windows:
         log_action("Нет подходящих окон для взаимодействия.")
         return
-    win = random.choice(windows)
+    # Выбор окна с учётом весов из config.json
+    weights = [config["apps"].get(get_active_process_name_for_window(win), {}).get("weight", 1.0) for win in windows]
+    win = random.choices(windows, weights=weights, k=1)[0]
     try:
         win.activate()
         time.sleep(1.5)
@@ -175,8 +249,14 @@ def simulate_behavior():
         return
 
     proc = get_active_process_name()
+    update_window_stats(proc, win.title)
+    log_action(f"Активировано окно: {proc} - {win.title}")
+
     if proc in ["outlook.exe", "teams.exe"]:
         simulate_outlook_or_teams()
+        return
+    if proc == "explorer.exe":
+        simulate_explorer_behavior(win)
         return
 
     actions = config["apps"].get(proc, {}).get("actions", [])
@@ -195,8 +275,19 @@ def simulate_behavior():
             log_action(f"{proc}: mouse_idle")
             move_mouse_safely()
 
+def get_active_process_name_for_window(win):
+    try:
+        pid = win._getWindowPid()
+        for proc in psutil.process_iter(['pid', 'name']):
+            if proc.pid == pid:
+                return proc.name().lower()
+    except:
+        pass
+    return "unknown"
+
 def main():
     print("Эмулятор запущен. Нажмите Scroll Lock для остановки.")
+    load_window_stats()
     last_thought_pause = time.time()
     last_switch_time = time.time()
     last_tab_switch = time.time()
@@ -244,6 +335,8 @@ def main():
     except pyautogui.FailSafeException:
         print("Fail-safe активация")
         log_action("Остановка через FailSafe")
+    finally:
+        save_window_stats()
 
 if __name__ == "__main__":
     main()

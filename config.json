@@ -2,43 +2,53 @@
   "apps": {
     "chrome.exe": {
       "type": "browser",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move"],
+      "weight": 2.0
     },
     "code.exe": {
       "type": "editor",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move"],
+      "weight": 1.5
     },
     "notepad++.exe": {
       "type": "editor",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move"],
+      "weight": 1.0
     },
     "explorer.exe": {
       "type": "explorer",
-      "actions": ["mouse_move"]
+      "actions": ["explorer_specific"],
+      "weight": 1.5
     },
     "outlook.exe": {
       "type": "mail",
-      "actions": ["scroll", "mouse_move", "outlook_teams_specific"]
+      "actions": ["scroll", "mouse_move", "outlook_teams_specific"],
+      "weight": 2.0
     },
     "teams.exe": {
       "type": "chat",
-      "actions": ["scroll", "mouse_move", "outlook_teams_specific"]
+      "actions": ["scroll", "mouse_move", "outlook_teams_specific"],
+      "weight": 2.0
     },
     "powershell_ise.exe": {
       "type": "terminal",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move"],
+      "weight": 1.0
     },
     "winword.exe": {
       "type": "editor",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move"],
+      "weight": 1.5
     },
     "excel.exe": {
       "type": "spreadsheet",
-      "actions": ["scroll", "mouse_move"]
+      "actions": ["scroll", "mouse_move"],
+      "weight": 1.5
     },
     "mremote.exe": {
       "type": "viewer",
-      "actions": ["mouse_idle"]
+      "actions": ["mouse_idle"],
+      "weight": 0.5
     }
   },
   "work_hours": {
