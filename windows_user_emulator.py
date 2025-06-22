@@ -322,9 +322,9 @@ def main():
                 simulate_browser_tab_switch()
                 last_tab_switch = time.time()
 
-            if time.time() - last_habr > random.uniform(300, 900):
-                simulate_habr_visit_and_scroll()
-                last_habr = time.time()
+            # if time.time() - last_habr > random.uniform(300, 900):
+            #     simulate_habr_visit_and_scroll()
+            #     last_habr = time.time()
 
             simulate_behavior()
             time.sleep(random.uniform(1, 6))

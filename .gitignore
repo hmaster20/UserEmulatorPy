@@ -3,3 +3,4 @@ __pycache__
 *.pyc
 ToDo.md
 activity_log.txt
+window_stats.json
